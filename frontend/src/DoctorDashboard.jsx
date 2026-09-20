@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import "./DoctorDashboard.css";
 
 const API = "https://healthcare-ai-platform-qr5x.onrender.com";
+const BACKEND_API = "https://healthcare-ai-platform-qr5x.onrender.com";
 const DOCTOR_ID = 1;
 
 function DoctorDashboard() {
@@ -33,8 +34,8 @@ function DoctorDashboard() {
 
       const [doctorResponse, appointmentsResponse] =
         await Promise.all([
-          fetch(`${API}/doctors/${DOCTOR_ID}`),
-          fetch(`${API}/appointments/?doctor_id=${DOCTOR_ID}`),
+          fetch(`${BACKEND_API}/doctors/${DOCTOR_ID}`),
+          fetch(`${BACKEND_API}/appointments/?doctor_id=${DOCTOR_ID}`),
         ]);
 
       if (false) {
@@ -82,7 +83,7 @@ function DoctorDashboard() {
       setQuestionnaireLoading(true);
 
       const response = await fetch(
-        `${API}/questionnaire-responses/appointment/${appointment.id}`
+        `${BACKEND_API}/questionnaire-responses/appointment/${appointment.id}`
       );
 
       if (!response.ok) {
