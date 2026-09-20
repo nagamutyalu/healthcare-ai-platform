@@ -60,27 +60,27 @@ def extract_requested_time(message: str):
     # DATE + TIME: 23 Sep 10:00, Sep 23 10:00 AM,
     # 2026-09-23 10:00, etc.
     date_match = re.search(
-        r"\\b(20\\d{2})[-/](\\d{1,2})[-/](\\d{1,2})\\b",
+        r"\b(20\d{2})[-/](\d{1,2})[-/](\d{1,2})\b",
         text,
     )
 
     month_match = re.search(
-        r"\\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|"
+        r"\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|"
         r"may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|"
-        r"oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+(\\d{1,2})\\b",
+        r"oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})\b",
         text,
         re.IGNORECASE,
     )
 
     time_match = re.search(
-        r"\\b(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\b",
+        r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b",
         text,
         re.IGNORECASE,
     )
 
     if not time_match:
         time_match = re.search(
-            r"\\b([01]?\\d|2[0-3]):([0-5]\\d)\\b",
+            r"\b([01]?\d|2[0-3]):([0-5]\d)\b",
             text,
         )
 
