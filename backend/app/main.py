@@ -165,8 +165,9 @@ app.include_router(
 # ============================================================
 # DEMO DATA SEED
 # ============================================================
-try:
-    from app.demo_seed import seed_demo_data
+from app.demo_seed import seed_demo_data
+
+@app.on_event("startup")
+def startup_seed_demo_data():
+    create_db_and_tables()
     seed_demo_data()
-except Exception as e:
-    print(f"DEMO SEED WARNING: {e}")
