@@ -53,89 +53,85 @@ def get_or_create_context(
 
 def extract_requested_time(message: str):
     import re
+    from datetime import datetime
 
     text = message.lower().strip()
 
-    # --------------------------------------------------
-    # 12-hour format
-    # Examples:
-    # 11:30 AM
-    # 11:30AM
-    # 2:00 PM
-    # 2 PM
-    # --------------------------------------------------
+    # DATE + TIME: 23 Sep 10:00, Sep 23 10:00 AM,
+    # 2026-09-23 10:00, etc.
+    date_match = re.search(
+        r"\\b(20\\d{2})[-/](\\d{1,2})[-/](\\d{1,2})\\b",
+        text,
+    )
 
-    match = re.search(
-        r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b",
+    month_match = re.search(
+        r"\\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|"
+        r"may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|"
+        r"oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+(\\d{1,2})\\b",
         text,
         re.IGNORECASE,
     )
 
-    if match:
-        hour = int(match.group(1))
-        minute = int(match.group(2) or 0)
-        period = match.group(3).lower()
-
-        if hour < 1 or hour > 12:
-            return None
-
-        if minute < 0 or minute > 59:
-            return None
-
-        if period == "am":
-            if hour == 12:
-                hour = 0
-        else:
-            if hour != 12:
-                hour += 12
-
-        return hour, minute
-
-    # --------------------------------------------------
-    # 24-hour format
-    # Examples:
-    # 11:30
-    # 14:00
-    # 09:30
-    # --------------------------------------------------
-
-    match = re.search(
-        r"\b([01]?\d|2[0-3]):([0-5]\d)\b",
+    time_match = re.search(
+        r"\\b(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)\\b",
         text,
+        re.IGNORECASE,
     )
 
-    if match:
-        hour = int(match.group(1))
-        minute = int(match.group(2))
+    if not time_match:
+        time_match = re.search(
+            r"\\b([01]?\\d|2[0-3]):([0-5]\\d)\\b",
+            text,
+        )
 
-        return hour, minute
+    if not time_match:
+        return None
 
-    # --------------------------------------------------
-    # Hour only
-    # Examples:
-    # 11
-    # 2
-    # 14
-    #
-    # We only use this when explicitly followed by
-    # "appointment", "slot", "booking", etc.
-    # --------------------------------------------------
+    hour = int(time_match.group(1))
+    minute = int(time_match.group(2) or 0)
+    period = time_match.group(3) if len(time_match.groups()) >= 3 else None
 
-    match = re.search(
-        r"\b(?:at|for)\s+([01]?\d|2[0-3])\b",
-        text,
-    )
+    if period:
+        period = period.lower()
+        if period == "am" and hour == 12:
+            hour = 0
+        elif period == "pm" and hour != 12:
+            hour += 12
 
-    if match:
-        hour = int(match.group(1))
+    # Return time tuple for backward compatibility.
+    # Date selection is handled from the user's explicit date below.
+    if date_match:
+        return (
+            hour,
+            minute,
+            datetime(
+                int(date_match.group(1)),
+                int(date_match.group(2)),
+                int(date_match.group(3)),
+            ).date(),
+        )
 
-        return hour, 0
+    if month_match:
+        months = {
+            "jan":1,"january":1,"feb":2,"february":2,
+            "mar":3,"march":3,"apr":4,"april":4,"may":5,
+            "jun":6,"june":6,"jul":7,"july":7,
+            "aug":8,"august":8,"sep":9,"september":9,
+            "oct":10,"october":10,"nov":11,"november":11,
+            "dec":12,"december":12,
+        }
+        month_text = re.search(
+            r"[A-Za-z]+", month_match.group(0)
+        ).group(0).lower()
+        month = months[month_text]
+        year = datetime.now().year
+        return (
+            hour,
+            minute,
+            datetime(year, month, int(month_match.group(1))).date(),
+        )
 
-    return None
-
-# ============================================================
-# FORMAT TIME
-# ============================================================
+    return (hour, minute, None)
 
 def format_time(value):
     if not value:
@@ -513,8 +509,12 @@ def handle_request(
                     "time_required",
             }
 
-        requested_hour, requested_minute = (
-            requested_time
+        requested_hour = requested_time[0]
+        requested_minute = requested_time[1]
+        requested_date = (
+            requested_time[2]
+            if len(requested_time) > 2
+            else None
         )
 
         # IMPORTANT:
@@ -533,6 +533,10 @@ def handle_request(
             if (
                 start.hour == requested_hour
                 and start.minute == requested_minute
+                and (
+                    requested_date is None
+                    or start.date() == requested_date
+                )
             ):
                 selected_slot = slot
                 break
