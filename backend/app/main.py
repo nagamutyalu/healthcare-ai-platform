@@ -161,3 +161,12 @@ app.include_router(
 app.include_router(
     capability_router
 )
+
+# ============================================================
+# DEMO DATA SEED
+# ============================================================
+try:
+    from app.demo_seed import seed_demo_data
+    seed_demo_data()
+except Exception as e:
+    print(f"DEMO SEED WARNING: {e}")
