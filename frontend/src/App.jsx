@@ -780,12 +780,19 @@ function App() {
         capabilityResult?.capability_result === "booking_confirmed" ||
         capabilityResult?.capability_result === "booking_recovered"
       ) {
-        const appointmentId = data?.appointment_id;
+        const appointmentId =
+          data?.appointment_id ||
+          capabilityResult?.appointment_id ||
+          capabilityResult?.id ||
+          null;
 
         setBookingSuccess({
           message: assistantMessage,
           appointmentId,
-          externalId: data?.external_appointment_id,
+          externalId:
+            data?.external_appointment_id ||
+            capabilityResult?.external_appointment_id ||
+            null,
           recovery:
             capabilityResult?.capability_result === "booking_recovered",
         });
@@ -869,8 +876,14 @@ function App() {
       ) {
         setSlots([]);
 
-        if (result?.appointment_id) {
-          setQuestionnaireAppointmentId(result.appointment_id);
+        const appointmentId =
+          result?.appointment_id ||
+          result?.capability_result?.appointment_id ||
+          result?.capability_result?.id ||
+          null;
+
+        if (appointmentId) {
+          setQuestionnaireAppointmentId(appointmentId);
         }
       }
     } finally {
