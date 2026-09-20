@@ -920,40 +920,11 @@ function App() {
     setQuestionnaireMessage("");
 
     try {
-      // Always resolve the real live appointment before submitting.
-      // This prevents stale/hardcoded appointment IDs after deployment.
-      const appointmentsResponse = await fetch(
-        `${API_BASE}/appointments/?patient_id=${PATIENT_ID}`
-      );
-
-      if (!appointmentsResponse.ok) {
-        throw new Error("Unable to load patient appointments.");
-      }
-
-      const appointments = await appointmentsResponse.json();
-
-      const activeAppointments = Array.isArray(appointments)
-        ? appointments.filter((appointment) =>
-            ["CONFIRMED", "PENDING", "RESCHEDULED"].includes(
-              appointment.status
-            )
-          )
-        : [];
-
-      activeAppointments.sort(
-        (a, b) =>
-          new Date(b.created_at || b.start_time) -
-          new Date(a.created_at || a.start_time)
-      );
-
-      const liveAppointmentId =
-        activeAppointments[0]?.id || questionnaireAppointmentId;
+      const liveAppointmentId = questionnaireAppointmentId;
 
       if (!liveAppointmentId) {
-        throw new Error("No active appointment found for this patient.");
+        throw new Error("Please book an appointment first.");
       }
-
-      setQuestionnaireAppointmentId(liveAppointmentId);
 
       const questionIds = [1, 2, 3, 4];
 
@@ -975,7 +946,7 @@ function App() {
               id: 0,
               questionnaire_id: 1,
               question_id: questionId,
-              appointment_id: liveAppointmentId,
+              appointment_id: questionnaireAppointmentId,
               patient_id: PATIENT_ID,
               answer,
             }),
