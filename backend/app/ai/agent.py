@@ -308,8 +308,10 @@ def find_existing_booking(
         ):
             continue
 
-        # Exact date AND exact time comparison.
-        if appointment.start_time == start_time:
+        # EXACT DATETIME — date AND time must match.
+        existing_start = appointment.start_time
+
+        if existing_start == start_time:
             return appointment
 
     return None
