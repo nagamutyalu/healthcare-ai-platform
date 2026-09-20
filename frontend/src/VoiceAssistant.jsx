@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 const API_BASE = "https://healthcare-ai-platform-qr5x.onrender.com";
-const PATIENT_ID = 3;
+const PATIENT_ID = 1;
 const SESSION_ID = "patient-3";
 
 export default function VoiceAssistant({ onClose }) {
