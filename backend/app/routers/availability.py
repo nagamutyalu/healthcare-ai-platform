@@ -1,92 +1,58 @@
 from datetime import datetime
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
-
+from pydantic import BaseModel
 from app.database.database import get_session
 from app.models.availability import Availability
-from app.models.doctor import Doctor
-from app.models.calendar import Calendar
 
+router = APIRouter(prefix="/availability", tags=["Availability"])
 
-router = APIRouter(
-    prefix="/availability",
-    tags=["Availability"],
-)
-
+class AvailabilityCreate(BaseModel):
+    doctor_id: int
+    calendar_id: int
+    start_time: datetime
+    end_time: datetime
+    appointment_type: str = "IN_PERSON"
+    is_available: bool = True
 
 @router.post("/")
 def create_availability(
-    availability: Availability,
+    data: AvailabilityCreate,
     session: Session = Depends(get_session),
 ):
-    doctor = session.get(Doctor, availability.doctor_id)
+    if data.end_time <= data.start_time:
+        raise HTTPException(status_code=400, detail="end_time must be after start_time")
 
-    if not doctor:
-        raise HTTPException(
-            status_code=404,
-            detail="Doctor not found",
-        )
-
-    calendar = session.get(Calendar, availability.calendar_id)
-
-    if not calendar:
-        raise HTTPException(
-            status_code=404,
-            detail="Calendar not found",
-        )
-
-    if not calendar.is_active:
-        raise HTTPException(
-            status_code=400,
-            detail="Calendar is inactive",
-        )
+    availability = Availability(
+        doctor_id=data.doctor_id,
+        calendar_id=data.calendar_id,
+        start_time=data.start_time,
+        end_time=data.end_time,
+        appointment_type=data.appointment_type,
+        is_available=data.is_available,
+    )
 
     session.add(availability)
+    session.flush()
+    availability_id = availability.id
     session.commit()
-    session.refresh(availability)
 
-    return availability
+    return session.get(Availability, availability_id)
 
-
-@router.get("/doctor/{doctor_id}")
-def get_doctor_availability(
-    doctor_id: int,
+@router.get("/")
+def get_availability(
+    doctor_id: int | None = Query(default=None),
+    calendar_id: int | None = Query(default=None),
     session: Session = Depends(get_session),
 ):
-    doctor = session.get(Doctor, doctor_id)
+    statement = select(Availability)
 
-    if not doctor:
-        raise HTTPException(
-            status_code=404,
-            detail="Doctor not found",
-        )
+    if doctor_id is not None:
+        statement = statement.where(Availability.doctor_id == doctor_id)
 
-    statement = select(Availability).where(
-        Availability.doctor_id == doctor_id,
-        Availability.is_available == True,
-    )
+    if calendar_id is not None:
+        statement = statement.where(Availability.calendar_id == calendar_id)
+
+    statement = statement.order_by(Availability.start_time)
 
     return session.exec(statement).all()
-@router.delete("/{availability_id}")
-def delete_availability(
-    availability_id: int,
-    session: Session = Depends(get_session),
-):
-    availability = session.get(
-        Availability,
-        availability_id,
-    )
-
-    if not availability:
-        raise HTTPException(
-            status_code=404,
-            detail="Availability not found",
-        )
-
-    session.delete(availability)
-    session.commit()
-
-    return {
-        "message": "Availability deleted successfully"
-    }
