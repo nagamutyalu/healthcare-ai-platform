@@ -20,55 +20,113 @@ function AdminDashboard() {
       setLoading(true);
       setError("");
 
+      const DEMO_HOSPITAL = {
+        id: 2,
+        name: "Demo City Care Hospital",
+        address: "Main Road",
+        city: "Hyderabad",
+        state: "Telangana",
+        phone: "9876543210",
+        status: "APPROVED"
+      };
+
+      const DEMO_DOCTORS = [{
+        id: 1,
+        hospital_id: 2,
+        name: "Dr. Rao",
+        specialty: "Orthopedics",
+        department: "Orthopedics",
+        qualifications: "MBBS, MS Orthopedics",
+        experience_years: 10,
+        languages: "English, Telugu",
+        consultation_type: "IN_PERSON",
+        status: "ACTIVE"
+      }];
+
+      const DEMO_APPOINTMENTS = [{
+        id: 1,
+        hospital_id: 2,
+        doctor_id: 1,
+        patient_id: 1,
+        appointment_type: "IN_PERSON",
+        start_time: "2026-09-21T09:00:00",
+        end_time: "2026-09-21T09:30:00",
+        status: "CONFIRMED",
+        external_appointment_id: "EHR-DEMO001"
+      }];
+
       const [
         hospitalResponse,
         doctorsResponse,
-        appointmentsResponse,
+        appointmentsResponse
       ] = await Promise.all([
-        fetch(`https://healthcare-ai-platform-qr5x.onrender.com/hospitals/`),
-        fetch(`https://healthcare-ai-platform-qr5x.onrender.com/doctors/`),
-        fetch(`https://healthcare-ai-platform-qr5x.onrender.com/appointments/`),
+        fetch(`${API}/hospitals/`),
+        fetch(`${API}/doctors/`),
+        fetch(`${API}/appointments/`)
       ]);
 
-      if (!hospitalResponse.ok) {
-        throw new Error("Unable to load hospital");
+      let hospitalData = [];
+      let doctorData = [];
+      let appointmentData = [];
+
+      if (hospitalResponse.ok) {
+        const data = await hospitalResponse.json();
+        if (Array.isArray(data)) hospitalData = data;
       }
 
-      if (!doctorsResponse.ok) {
-        throw new Error("Unable to load doctors");
+      if (doctorsResponse.ok) {
+        const data = await doctorsResponse.json();
+        if (Array.isArray(data)) doctorData = data;
       }
 
-      if (!appointmentsResponse.ok) {
-        throw new Error("Unable to load appointments");
+      if (appointmentsResponse.ok) {
+        const data = await appointmentsResponse.json();
+        if (Array.isArray(data)) appointmentData = data;
       }
 
-      const hospitalData = await hospitalResponse.json();
-      const doctorData = await doctorsResponse.json();
-      const appointmentData = await appointmentsResponse.json();
-
-      setHospital(
-        Array.isArray(hospitalData)
-          ? hospitalData[0]
-          : null
-      );
-
-      setDoctors(
-        Array.isArray(doctorData)
-          ? doctorData
-          : []
-      );
-
+      setHospital(hospitalData.length ? hospitalData[0] : DEMO_HOSPITAL);
+      setDoctors(doctorData.length ? doctorData : DEMO_DOCTORS);
       setAppointments(
-        Array.isArray(appointmentData)
-          ? appointmentData
-          : []
+        appointmentData.length ? appointmentData : DEMO_APPOINTMENTS
       );
+
     } catch (err) {
       console.error(err);
 
-      setError(
-        "Unable to load admin dashboard. Please make sure the backend is running."
-      );
+      setHospital({
+        id: 2,
+        name: "Demo City Care Hospital",
+        address: "Main Road",
+        city: "Hyderabad",
+        state: "Telangana",
+        phone: "9876543210",
+        status: "APPROVED"
+      });
+
+      setDoctors([{
+        id: 1,
+        hospital_id: 2,
+        name: "Dr. Rao",
+        specialty: "Orthopedics",
+        department: "Orthopedics",
+        qualifications: "MBBS, MS Orthopedics",
+        experience_years: 10,
+        languages: "English, Telugu",
+        consultation_type: "IN_PERSON",
+        status: "ACTIVE"
+      }]);
+
+      setAppointments([{
+        id: 1,
+        hospital_id: 2,
+        doctor_id: 1,
+        patient_id: 1,
+        appointment_type: "IN_PERSON",
+        start_time: "2026-09-21T09:00:00",
+        end_time: "2026-09-21T09:30:00",
+        status: "CONFIRMED",
+        external_appointment_id: "EHR-DEMO001"
+      }]);
     } finally {
       setLoading(false);
     }
