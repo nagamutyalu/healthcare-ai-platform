@@ -70,16 +70,8 @@ app.router.routes.extend(audit_logs_router.routes)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-        "https://healthcare-ai-platform.vercel.app",
-        "https://healthcare-ai-platform-xa23q1bw7-nagamutyalu.vercel.app",
-    ],
+    allow_origins=[],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
