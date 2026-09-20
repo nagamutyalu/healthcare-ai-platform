@@ -1,18 +1,11 @@
 from sqlmodel import SQLModel, Session, create_engine
-from sqlalchemy import URL
 
-DATABASE_URL = URL.create(
-    drivername="mysql+pymysql",
-    username="healthcare_app",
-    password="HealthApp@2026",
-    host="127.0.0.1",
-    port=3306,
-    database="healthcare_ai",
-)
+DATABASE_URL = "sqlite:///./healthcare_ai.db"
 
 engine = create_engine(
     DATABASE_URL,
     echo=True,
+    connect_args={"check_same_thread": False},
 )
 
 
