@@ -1,0 +1,47 @@
+from fastapi import FastAPI
+
+from database.database import create_db_and_tables
+from models.hospital import Hospital
+
+from models.doctor import Doctor
+from models.calendar import Calendar
+from models.availability import Availability
+from models.blocked_slot import BlockedSlot
+from models.patient import Patient
+from models.appointment import Appointment
+from routers.hospitals import router as hospital_router
+from routers.doctors import router as doctor_router
+from routers.availability import router as availability_router
+from routers.calendars import router as calendar_router
+from routers.patients import router as patient_router
+app.include_router(patient_router)
+app = FastAPI(
+    title="Healthcare AI Platform",
+    description="AI-powered multi-hospital patient intake and scheduling platform",
+    version="1.0.0",
+)
+
+app.include_router(hospital_router)
+app.include_router(doctor_router)
+app.include_router(availability_router)
+app.include_router(calendar_router)
+@app.on_event("startup")
+def startup():
+    create_db_and_tables()
+
+
+@app.get("/")
+def root():
+    return {
+        "message": "Healthcare AI Platform Backend is running",
+        "status": "success",
+    }
+
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "database": "connected",
+    }
+

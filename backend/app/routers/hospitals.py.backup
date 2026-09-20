@@ -1,0 +1,29 @@
+from fastapi import APIRouter, Depends
+from sqlmodel import Session, select
+
+from app.database.database import get_session
+from app.models.hospital import Hospital
+
+
+router = APIRouter(prefix="/hospitals", tags=["Hospitals"])
+
+
+@router.post("/")
+def create_hospital(
+    hospital: Hospital,
+    session: Session = Depends(get_session),
+):
+    session.add(hospital)
+    session.commit()
+    session.refresh(hospital)
+
+    return hospital
+
+
+@router.get("/")
+def get_hospitals(
+    session: Session = Depends(get_session),
+):
+    hospitals = session.exec(select(Hospital)).all()
+
+    return hospitals

@@ -1,0 +1,309 @@
+from datetime import datetime
+
+from sqlmodel import Session, select
+
+from app.models.appointment import Appointment
+from app.models.availability import Availability
+from app.models.doctor import Doctor
+from app.models.hospital import Hospital
+from app.models.patient import Patient
+
+from app.integrations.mock_ehr import (
+    create_external_appointment,
+    verify_external_appointment,
+)
+
+from app.routers.workflows import trigger_appointment_confirmed_workflow
+
+
+def create_appointment_capability(
+    session: Session,
+    hospital_id: int,
+    doctor_id: int,
+    patient_id: int,
+    start_time: datetime,
+    end_time: datetime,
+    appointment_type: str = "IN_PERSON",
+    idempotency_key: str | None = None,
+):
+
+    # --------------------------------------------------
+    # 1. VALIDATE HOSPITAL
+    # --------------------------------------------------
+
+    hospital = session.get(Hospital, hospital_id)
+
+    if not hospital:
+        return {
+            "success": False,
+            "message": "Hospital not found.",
+            "error": "HOSPITAL_NOT_FOUND",
+        }
+
+    # --------------------------------------------------
+    # 2. VALIDATE DOCTOR
+    # --------------------------------------------------
+
+    doctor = session.get(Doctor, doctor_id)
+
+    if not doctor:
+        return {
+            "success": False,
+            "message": "Doctor not found.",
+            "error": "DOCTOR_NOT_FOUND",
+        }
+
+    if doctor.status != "ACTIVE":
+        return {
+            "success": False,
+            "message": "Doctor is not active.",
+            "error": "DOCTOR_NOT_ACTIVE",
+        }
+
+    # --------------------------------------------------
+    # 3. VALIDATE PATIENT
+    # --------------------------------------------------
+
+    patient = session.get(Patient, patient_id)
+
+    if not patient:
+        return {
+            "success": False,
+            "message": "Patient not found.",
+            "error": "PATIENT_NOT_FOUND",
+        }
+
+    # --------------------------------------------------
+    # 4. IDEMPOTENCY CHECK
+    # --------------------------------------------------
+
+    if idempotency_key:
+
+        existing = session.exec(
+            select(Appointment).where(
+                Appointment.idempotency_key == idempotency_key
+            )
+        ).first()
+
+        if existing:
+            return {
+                "success": True,
+                "message": "Existing appointment returned.",
+                "appointment": existing,
+                "appointment_id": existing.id,
+                "external_appointment_id": (
+                    existing.external_appointment_id
+                ),
+                "verified": existing.status == "CONFIRMED",
+                "capability_result": "idempotent_existing",
+            }
+
+    # --------------------------------------------------
+    # 5. CHECK AVAILABILITY
+    # --------------------------------------------------
+
+    availability = session.exec(
+        select(Availability).where(
+            Availability.doctor_id == doctor_id,
+            Availability.is_available == True,
+            Availability.start_time <= start_time,
+            Availability.end_time >= end_time,
+        )
+    ).first()
+
+    if not availability:
+        return {
+            "success": False,
+            "message": "Selected slot is not available.",
+            "error": "SLOT_NOT_AVAILABLE",
+        }
+
+    # --------------------------------------------------
+    # 6. CHECK DOUBLE BOOKING
+    # --------------------------------------------------
+
+    overlapping_appointment = session.exec(
+        select(Appointment).where(
+            Appointment.doctor_id == doctor_id,
+            Appointment.start_time < end_time,
+            Appointment.end_time > start_time,
+            Appointment.status.in_([
+                "PENDING",
+                "CONFIRMED",
+                "RESCHEDULED",
+            ]),
+        )
+    ).first()
+
+    if overlapping_appointment:
+        return {
+            "success": False,
+            "message": "Selected slot is already booked.",
+            "error": "SLOT_ALREADY_BOOKED",
+        }
+
+    # --------------------------------------------------
+    # 7. CREATE INTERNAL APPOINTMENT
+    # --------------------------------------------------
+
+    appointment = Appointment(
+        hospital_id=hospital_id,
+        doctor_id=doctor_id,
+        patient_id=patient_id,
+        appointment_type=appointment_type,
+        start_time=start_time,
+        end_time=end_time,
+        status="PENDING",
+        idempotency_key=idempotency_key,
+    )
+
+    session.add(appointment)
+    session.commit()
+    session.refresh(appointment)
+
+    # --------------------------------------------------
+    # 8. CREATE APPOINTMENT IN MOCK EHR
+    # --------------------------------------------------
+
+    try:
+
+        external_result = create_external_appointment(
+            patient_id=patient_id,
+            doctor_id=doctor_id,
+            hospital_id=hospital_id,
+            start_time=start_time,
+            end_time=end_time,
+            appointment_type=appointment_type,
+        )
+
+    except Exception as e:
+
+        appointment.status = "FAILED"
+
+        session.add(appointment)
+        session.commit()
+
+        return {
+            "success": False,
+            "message": "External healthcare system booking failed.",
+            "error": "EHR_CREATE_FAILED",
+            "details": str(e),
+            "appointment_id": appointment.id,
+        }
+
+    # --------------------------------------------------
+    # 9. STORE EXTERNAL APPOINTMENT ID
+    # --------------------------------------------------
+
+    external_id = None
+
+    if isinstance(external_result, dict):
+
+        external_id = (
+            external_result.get("external_appointment_id")
+            or external_result.get("id")
+        )
+
+    else:
+
+        external_id = external_result
+
+    appointment.external_appointment_id = external_id
+
+    session.add(appointment)
+    session.commit()
+    session.refresh(appointment)
+
+    # --------------------------------------------------
+    # 10. VERIFY EXTERNAL APPOINTMENT
+    # --------------------------------------------------
+
+    try:
+
+        verified = verify_external_appointment(
+            external_id
+        )
+
+    except Exception as e:
+
+        appointment.status = "SYNCHRONIZATION_PENDING"
+
+        session.add(appointment)
+        session.commit()
+
+        return {
+            "success": False,
+            "message": (
+                "Appointment was created externally, "
+                "but verification could not be completed."
+            ),
+            "error": "EHR_VERIFICATION_FAILED",
+            "details": str(e),
+            "appointment": appointment,
+            "appointment_id": appointment.id,
+            "external_appointment_id": external_id,
+            "verified": False,
+            "capability_result": "synchronization_pending",
+        }
+
+    # --------------------------------------------------
+    # 11. CONFIRM AFTER SUCCESSFUL VERIFICATION
+    # --------------------------------------------------
+
+    if verified:
+
+        appointment.status = "CONFIRMED"
+
+        session.add(appointment)
+        session.commit()
+        session.refresh(appointment)
+
+        # Trigger APPOINTMENT_CONFIRMED workflow
+        workflow_execution = (
+            trigger_appointment_confirmed_workflow(
+                session=session,
+                appointment_id=appointment.id
+            )
+        )
+
+        return {
+            "success": True,
+            "message": "Appointment successfully booked and verified.",
+            "appointment": appointment,
+            "appointment_id": appointment.id,
+            "external_appointment_id": external_id,
+            "verified": True,
+            "workflow_triggered": (
+                workflow_execution is not None
+            ),
+            "workflow_execution_id": (
+                workflow_execution.id
+                if workflow_execution
+                else None
+            ),
+            "capability_result": "booking_success",
+        }
+
+    # --------------------------------------------------
+    # 12. VERIFICATION FAILED
+    # --------------------------------------------------
+
+    appointment.status = "SYNCHRONIZATION_PENDING"
+
+    session.add(appointment)
+    session.commit()
+    session.refresh(appointment)
+
+    return {
+        "success": False,
+        "message": (
+            "Appointment was created, "
+            "but external verification failed."
+        ),
+        "error": "VERIFICATION_FAILED",
+        "appointment": appointment,
+        "appointment_id": appointment.id,
+        "external_appointment_id": external_id,
+        "verified": False,
+        "capability_result": "synchronization_pending",
+    }
