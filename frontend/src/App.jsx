@@ -842,11 +842,22 @@ function App() {
     setError("");
     setBookingSuccess(null);
 
-    const requestedTime = formatTimeOnly(slot.start_time);
+    const slotDate = new Date(slot.start_time);
+
+    const requestedDate = slotDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+
+    const requestedTime = slotDate.toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
 
     try {
       const result = await sendMessage(
-        `Book the ${requestedTime} appointment`
+        `Book the ${requestedDate} ${requestedTime} appointment`
       );
 
       if (
