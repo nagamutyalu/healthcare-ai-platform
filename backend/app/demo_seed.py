@@ -7,7 +7,6 @@ from app.models.doctor import Doctor
 from app.models.patient import Patient
 from app.models.calendar import Calendar
 from app.models.availability import Availability
-from app.models.appointment import Appointment
 
 
 def seed_demo_data():
@@ -17,7 +16,9 @@ def seed_demo_data():
         # HOSPITAL
         # -----------------------------
         hospital = session.exec(
-            select(Hospital).where(Hospital.name == "Demo City Care Hospital")
+            select(Hospital).where(
+                Hospital.name == "Demo City Care Hospital"
+            )
         ).first()
 
         if not hospital:
@@ -26,7 +27,7 @@ def seed_demo_data():
                 address="Main Road",
                 city="Hyderabad",
                 state="Telangana",
-                phone="9876543210",
+                phone="9999999999",
                 status="APPROVED",
             )
             session.add(hospital)
@@ -34,6 +35,7 @@ def seed_demo_data():
             session.refresh(hospital)
         else:
             hospital.status = "APPROVED"
+            session.add(hospital)
             session.commit()
 
         # -----------------------------
@@ -62,13 +64,19 @@ def seed_demo_data():
             session.add(doctor)
             session.commit()
             session.refresh(doctor)
+        else:
+            doctor.status = "ACTIVE"
+            doctor.specialty = "Orthopedics"
+            doctor.department = "Orthopedics"
+            session.add(doctor)
+            session.commit()
 
         # -----------------------------
         # PATIENT
         # -----------------------------
         patient = session.exec(
             select(Patient).where(
-                Patient.email == "rahul.demo@example.com"
+                Patient.phone == "9999999998"
             )
         ).first()
 
@@ -76,31 +84,28 @@ def seed_demo_data():
             patient = Patient(
                 first_name="Rahul",
                 last_name="Kumar",
-                phone="9876501234",
-                email="rahul.demo@example.com",
-                date_of_birth="2000-01-15",
+                phone="9999999998",
+                email="rahul@example.com",
                 preferred_language="English",
                 communication_preference="SMS",
             )
             session.add(patient)
             session.commit()
-            session.refresh(patient)
 
         # -----------------------------
         # CALENDAR
         # -----------------------------
         calendar = session.exec(
             select(Calendar).where(
-                Calendar.doctor_id == doctor.id,
-                Calendar.name == "Demo Calendar",
+                Calendar.doctor_id == doctor.id
             )
         ).first()
 
         if not calendar:
             calendar = Calendar(
                 doctor_id=doctor.id,
-                name="Demo Calendar",
-                is_active=True,
+                name="Dr. Rao Calendar",
+                active=True,
                 timezone="Asia/Kolkata",
             )
             session.add(calendar)
@@ -110,79 +115,45 @@ def seed_demo_data():
         # -----------------------------
         # AVAILABILITY
         # -----------------------------
-        demo_slots = [
-            "09:00",
-            "09:30",
-            "10:00",
-            "10:30",
-            "11:00",
-            "14:00",
-            "14:30",
-            "15:00",
-            "15:30",
-        ]
+        existing = session.exec(
+            select(Availability).where(
+                Availability.doctor_id == doctor.id
+            )
+        ).all()
 
-        for t in demo_slots:
-            start = datetime.fromisoformat(f"2026-09-21T{t}:00")
-            end = start + timedelta(minutes=30)
+        if not existing:
+            slots = [
+                ("09:00", "09:30"),
+                ("09:30", "10:00"),
+                ("10:00", "10:30"),
+                ("10:30", "11:00"),
+                ("11:00", "11:30"),
+                ("14:00", "14:30"),
+                ("14:30", "15:00"),
+                ("15:00", "15:30"),
+                ("15:30", "16:00"),
+            ]
 
-            existing = session.exec(
-                select(Availability).where(
-                    Availability.doctor_id == doctor.id,
-                    Availability.calendar_id == calendar.id,
-                    Availability.start_time == start,
-                )
-            ).first()
-
-            if not existing:
+            for start, end in slots:
                 session.add(
                     Availability(
                         doctor_id=doctor.id,
                         calendar_id=calendar.id,
-                        start_time=start,
-                        end_time=end,
+                        start_time=datetime.fromisoformat(
+                            f"2026-09-21T{start}:00"
+                        ),
+                        end_time=datetime.fromisoformat(
+                            f"2026-09-21T{end}:00"
+                        ),
                         appointment_type="IN_PERSON",
                         is_available=True,
                     )
                 )
 
-        session.commit()
-
-        # -----------------------------
-        # DEMO APPOINTMENT
-        # -----------------------------
-        appointment_start = datetime.fromisoformat(
-            "2026-09-21T09:00:00"
-        )
-        appointment_end = datetime.fromisoformat(
-            "2026-09-21T09:30:00"
-        )
-
-        appointment = session.exec(
-            select(Appointment).where(
-                Appointment.doctor_id == doctor.id,
-                Appointment.patient_id == patient.id,
-                Appointment.start_time == appointment_start,
-            )
-        ).first()
-
-        if not appointment:
-            appointment = Appointment(
-                hospital_id=hospital.id,
-                doctor_id=doctor.id,
-                patient_id=patient.id,
-                appointment_type="IN_PERSON",
-                start_time=appointment_start,
-                end_time=appointment_end,
-                status="CONFIRMED",
-                idempotency_key="demo-seed-appointment-001",
-            )
-            session.add(appointment)
             session.commit()
-            session.refresh(appointment)
 
         print(
-            f"DEMO DATA READY: hospital={hospital.id}, "
-            f"doctor={doctor.id}, patient={patient.id}, "
-            f"calendar={calendar.id}, appointment={appointment.id}"
+            f"DEMO SEED OK | hospital={hospital.id} "
+            f"doctor={doctor.id} patient={patient.id} "
+            f"calendar={calendar.id}"
         )
