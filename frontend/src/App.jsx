@@ -883,6 +883,14 @@ function App() {
   }
 
   function openQuestionnaire() {
+    const liveAppointmentId =
+      bookingSuccess?.appointmentId ||
+      questionnaireAppointmentId;
+
+    if (liveAppointmentId) {
+      setQuestionnaireAppointmentId(liveAppointmentId);
+    }
+
     setQuestionnaireMessage("");
     setShowQuestionnaire(true);
   }
