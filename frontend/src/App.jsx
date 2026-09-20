@@ -10,7 +10,7 @@ const SESSION_ID = "patient-3";
 
 // Prototype appointment used when questionnaire is opened
 // after the currently tested booking.
-const DEFAULT_APPOINTMENT_ID = 12;
+const DEFAULT_APPOINTMENT_ID = null;
 
 function formatSlotTime(value) {
   if (!value) return "";
