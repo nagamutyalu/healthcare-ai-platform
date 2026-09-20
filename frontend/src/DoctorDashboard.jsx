@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./DoctorDashboard.css";
 
-const API = "http://localhost:8000";
+const API = "https://healthcare-ai-platform-qr5x.onrender.com";
 const DOCTOR_ID = 1;
 
 function DoctorDashboard() {

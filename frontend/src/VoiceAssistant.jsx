@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = "https://healthcare-ai-platform-qr5x.onrender.com";
 const PATIENT_ID = 3;
 const SESSION_ID = "patient-3";
 

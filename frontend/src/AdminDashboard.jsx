@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./AdminDashboard.css";
 
-const API = "http://localhost:8000";
+const API = "https://healthcare-ai-platform-qr5x.onrender.com";
 
 function AdminDashboard() {
   const [hospital, setHospital] = useState(null);
