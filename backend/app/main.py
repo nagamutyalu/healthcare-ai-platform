@@ -78,6 +78,7 @@ app.add_middleware(
         "http://127.0.0.1:5174",
         "http://127.0.0.1:5175",
         "https://healthcare-ai-platform.vercel.app",
+        "https://healthcare-ai-platform-xa23q1bw7-nagamutyalu.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
