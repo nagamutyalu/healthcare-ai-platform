@@ -15,22 +15,24 @@ def create_patient(
     patient: Patient,
     session: Session = Depends(get_session),
 ):
-    session.add(patient)
-    session.commit()
-    session.refresh(patient)
-
-    return patient
+    try:
+        session.add(patient)
+        session.commit()
+        session.refresh(patient)
+        return patient
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Patient creation failed: {str(e)}",
+        )
 
 
 @router.get("/")
 def get_patients(
     session: Session = Depends(get_session),
 ):
-    patients = session.exec(
-        select(Patient)
-    ).all()
-
-    return patients
+    return session.exec(select(Patient)).all()
 
 
 @router.get("/{patient_id}")
