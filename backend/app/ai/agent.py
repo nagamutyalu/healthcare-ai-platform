@@ -287,29 +287,32 @@ def get_available_slots(
 
 def find_existing_booking(
     session,
-    patient_id: int,
-    doctor_id: int,
+    patient_id,
+    doctor_id,
     start_time,
 ):
-    return session.exec(
+    from app.models.appointment import Appointment
+
+    appointments = session.exec(
         select(Appointment).where(
             Appointment.patient_id == patient_id,
             Appointment.doctor_id == doctor_id,
-            Appointment.start_time == start_time,
-            Appointment.status.in_(
-                [
-                    "PENDING",
-                    "CONFIRMED",
-                    "RESCHEDULED",
-                ]
-            ),
         )
-    ).first()
+    ).all()
 
+    for appointment in appointments:
+        if appointment.status not in (
+            "CONFIRMED",
+            "PENDING",
+            "RESCHEDULED",
+        ):
+            continue
 
-# ============================================================
-# MAIN AI HANDLER
-# ============================================================
+        # Exact date AND exact time comparison.
+        if appointment.start_time == start_time:
+            return appointment
+
+    return None
 
 def handle_request(
     session,
