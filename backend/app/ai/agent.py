@@ -157,16 +157,23 @@ def format_time(value):
 # ============================================================
 
 def find_orthopedic_doctor(session):
+    doctors = session.exec(
+        select(Doctor).where(Doctor.status == "ACTIVE")
+    ).all()
 
-    doctor = session.exec(
-        select(Doctor).where(
-            Doctor.specialty.ilike("%orthopedic%"),
-            Doctor.status == "ACTIVE",
-        )
-    ).first()
+    for doctor in doctors:
+        specialty = (doctor.specialty or "").lower()
+        department = (doctor.department or "").lower()
 
-    return doctor
+        if (
+            "orthopedic" in specialty
+            or "orthopaedic" in specialty
+            or "orthopedic" in department
+            or "orthopaedic" in department
+        ):
+            return doctor
 
+    return None
 
 # ============================================================
 # GET AVAILABLE SLOTS DIRECTLY FROM DATABASE
