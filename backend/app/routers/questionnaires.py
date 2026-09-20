@@ -57,6 +57,42 @@ def get_questionnaires(
     ).all()
 
 
+@router.get("/appointment/{appointment_id}")
+def get_questionnaire_for_appointment(
+    appointment_id: int,
+    session: Session = Depends(get_session),
+):
+    from app.models.appointment import Appointment
+
+    appointment = session.get(Appointment, appointment_id)
+
+    if not appointment:
+        raise HTTPException(
+            status_code=404,
+            detail="Appointment not found",
+        )
+
+    questionnaire = session.exec(
+        select(Questionnaire).where(
+            Questionnaire.hospital_id == appointment.hospital_id,
+            Questionnaire.is_active == True,
+            Questionnaire.appointment_type == appointment.appointment_type,
+            (
+                (Questionnaire.doctor_id == appointment.doctor_id)
+                | (Questionnaire.doctor_id == None)
+            ),
+        )
+    ).first()
+
+    if not questionnaire:
+        raise HTTPException(
+            status_code=404,
+            detail="No questionnaire configured for this appointment",
+        )
+
+    return questionnaire
+
+
 @router.get("/{questionnaire_id}")
 def get_questionnaire(
     questionnaire_id: int,

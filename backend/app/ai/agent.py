@@ -533,6 +533,54 @@ def handle_request(
                 break
 
         # ====================================================
+        # IDEMPOTENT RETRY CHECK — BEFORE SLOT AVAILABILITY
+        # ====================================================
+
+        requested_start = None
+
+        for existing_candidate in session.exec(
+            select(Appointment).where(
+                Appointment.patient_id == patient_id,
+                Appointment.doctor_id == doctor_id,
+            )
+        ).all():
+            if existing_candidate.status in ["CONFIRMED", "PENDING", "RESCHEDULED"]:
+                if (
+                    existing_candidate.start_time.hour == requested_hour
+                    and existing_candidate.start_time.minute == requested_minute
+                ):
+                    requested_start = existing_candidate.start_time
+                    break
+
+        if requested_start is not None:
+            existing = find_existing_booking(
+                session,
+                patient_id,
+                doctor_id,
+                requested_start,
+            )
+
+            if existing:
+                return {
+                    "message": (
+                        "Your appointment is already confirmed for "
+                        f"{format_time(existing.start_time)}."
+                    ),
+                    "capability_result": "already_booked",
+                    "appointment": {
+                        "id": existing.id,
+                        "patient_id": existing.patient_id,
+                        "doctor_id": existing.doctor_id,
+                        "start_time": existing.start_time.isoformat(),
+                        "end_time": existing.end_time.isoformat(),
+                        "status": existing.status,
+                        "external_appointment_id": existing.external_appointment_id,
+                    },
+                    "appointment_id": existing.id,
+                    "idempotent_existing": True,
+                }
+
+        # ====================================================
         # SLOT NOT AVAILABLE
         # ====================================================
 
