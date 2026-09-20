@@ -25,9 +25,9 @@ function AdminDashboard() {
         doctorsResponse,
         appointmentsResponse,
       ] = await Promise.all([
-        fetch(`${API}/hospitals/`),
-        fetch(`${API}/doctors/`),
-        fetch(`${API}/appointments/`),
+        fetch(`https://healthcare-ai-platform-qr5x.onrender.com/hospitals/`),
+        fetch(`https://healthcare-ai-platform-qr5x.onrender.com/doctors/`),
+        fetch(`https://healthcare-ai-platform-qr5x.onrender.com/appointments/`),
       ]);
 
       if (!hospitalResponse.ok) {
