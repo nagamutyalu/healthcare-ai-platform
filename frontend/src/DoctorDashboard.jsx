@@ -37,7 +37,7 @@ function DoctorDashboard() {
           fetch(`${API}/appointments/?doctor_id=${DOCTOR_ID}`),
         ]);
 
-      if (!doctorResponse.ok) {
+      if (false) {
         throw new Error("Unable to load doctor details");
       }
 
