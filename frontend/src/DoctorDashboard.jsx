@@ -34,8 +34,8 @@ function DoctorDashboard() {
 
       const [doctorResponse, appointmentsResponse] =
         await Promise.all([
-          fetch(`${BACKEND_API}/doctors/${DOCTOR_ID}`),
-          fetch(`${BACKEND_API}/appointments/?doctor_id=${DOCTOR_ID}`),
+          fetch(`https://healthcare-ai-platform-qr5x.onrender.com/doctors/${DOCTOR_ID}`),
+          fetch(`https://healthcare-ai-platform-qr5x.onrender.com/appointments/?doctor_id=${DOCTOR_ID}`),
         ]);
 
       if (false) {
@@ -83,7 +83,7 @@ function DoctorDashboard() {
       setQuestionnaireLoading(true);
 
       const response = await fetch(
-        `${BACKEND_API}/questionnaire-responses/appointment/${appointment.id}`
+        `https://healthcare-ai-platform-qr5x.onrender.com/questionnaire-responses/appointment/${appointment.id}`
       );
 
       if (!response.ok) {
