@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlmodel import Session, select
 
 from app.database.database import engine
@@ -7,14 +7,16 @@ from app.models.doctor import Doctor
 from app.models.patient import Patient
 from app.models.calendar import Calendar
 from app.models.availability import Availability
+from app.models.questionnaire import Questionnaire
+from app.models.question import Question
 
 
 def seed_demo_data():
     with Session(engine) as session:
 
-        # -----------------------------
+        # =========================
         # HOSPITAL
-        # -----------------------------
+        # =========================
         hospital = session.exec(
             select(Hospital).where(
                 Hospital.name == "Demo City Care Hospital"
@@ -38,13 +40,13 @@ def seed_demo_data():
             session.add(hospital)
             session.commit()
 
-        # -----------------------------
+        # =========================
         # DOCTOR
-        # -----------------------------
+        # =========================
         doctor = session.exec(
             select(Doctor).where(
-                Doctor.name == "Dr. Rao",
                 Doctor.hospital_id == hospital.id,
+                Doctor.name == "Dr. Rao",
             )
         ).first()
 
@@ -71,9 +73,9 @@ def seed_demo_data():
             session.add(doctor)
             session.commit()
 
-        # -----------------------------
+        # =========================
         # PATIENT
-        # -----------------------------
+        # =========================
         patient = session.exec(
             select(Patient).where(
                 Patient.phone == "9999999998"
@@ -91,13 +93,15 @@ def seed_demo_data():
             )
             session.add(patient)
             session.commit()
+            session.refresh(patient)
 
-        # -----------------------------
+        # =========================
         # CALENDAR
-        # -----------------------------
+        # =========================
         calendar = session.exec(
             select(Calendar).where(
-                Calendar.doctor_id == doctor.id
+                Calendar.doctor_id == doctor.id,
+                Calendar.name == "Dr. Rao Calendar",
             )
         ).first()
 
@@ -112,16 +116,16 @@ def seed_demo_data():
             session.commit()
             session.refresh(calendar)
 
-        # -----------------------------
+        # =========================
         # AVAILABILITY
-        # -----------------------------
-        existing = session.exec(
+        # =========================
+        existing_slots = session.exec(
             select(Availability).where(
                 Availability.doctor_id == doctor.id
             )
         ).all()
 
-        if not existing:
+        if not existing_slots:
             slots = [
                 ("09:00", "09:30"),
                 ("09:30", "10:00"),
@@ -152,8 +156,77 @@ def seed_demo_data():
 
             session.commit()
 
+        # =========================
+        # QUESTIONNAIRE
+        # =========================
+        questionnaire = session.exec(
+            select(Questionnaire).where(
+                Questionnaire.title == "Orthopedic Pre-Visit Questionnaire"
+            )
+        ).first()
+
+        if not questionnaire:
+            questionnaire = Questionnaire(
+                hospital_id=hospital.id,
+                doctor_id=doctor.id,
+                title="Orthopedic Pre-Visit Questionnaire",
+                description="Pre-visit administrative questionnaire for orthopedic appointments.",
+                appointment_type="IN_PERSON",
+                is_active=True,
+            )
+            session.add(questionnaire)
+            session.commit()
+            session.refresh(questionnaire)
+
+        # =========================
+        # QUESTIONS
+        # =========================
+        existing_questions = session.exec(
+            select(Question).where(
+                Question.questionnaire_id == questionnaire.id
+            )
+        ).all()
+
+        if not existing_questions:
+            questions = [
+                Question(
+                    questionnaire_id=questionnaire.id,
+                    question_text="Which body area is the reason for your visit?",
+                    question_type="SHORT_TEXT",
+                    is_required=True,
+                    display_order=1,
+                ),
+                Question(
+                    questionnaire_id=questionnaire.id,
+                    question_text="When did you first notice the issue?",
+                    question_type="SHORT_TEXT",
+                    is_required=True,
+                    display_order=2,
+                ),
+                Question(
+                    questionnaire_id=questionnaire.id,
+                    question_text="Have you previously consulted a doctor for this issue?",
+                    question_type="YES_NO",
+                    is_required=True,
+                    display_order=3,
+                ),
+                Question(
+                    questionnaire_id=questionnaire.id,
+                    question_text="Is there anything specific you want the doctor to know before the appointment?",
+                    question_type="LONG_TEXT",
+                    is_required=False,
+                    display_order=4,
+                ),
+            ]
+
+            session.add_all(questions)
+            session.commit()
+
         print(
-            f"DEMO SEED OK | hospital={hospital.id} "
-            f"doctor={doctor.id} patient={patient.id} "
-            f"calendar={calendar.id}"
+            "DEMO SEED OK | "
+            f"hospital={hospital.id} "
+            f"doctor={doctor.id} "
+            f"patient={patient.id} "
+            f"calendar={calendar.id} "
+            f"questionnaire={questionnaire.id}"
         )
