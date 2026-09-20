@@ -158,12 +158,16 @@ def format_time(value):
 
 def find_orthopedic_doctor(session):
     doctors = session.exec(
-        select(Doctor).where(Doctor.status == "ACTIVE")
+        select(Doctor)
     ).all()
 
     for doctor in doctors:
-        specialty = (doctor.specialty or "").lower()
-        department = (doctor.department or "").lower()
+        status = (doctor.status or "").strip().upper()
+        specialty = (doctor.specialty or "").strip().lower()
+        department = (doctor.department or "").strip().lower()
+
+        if status != "ACTIVE":
+            continue
 
         if (
             "orthopedic" in specialty
